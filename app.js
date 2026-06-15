@@ -463,6 +463,61 @@ async function postComment() {
 //   e.target.value = ''; // Reset the input
 // }
 
+// async function handleScriptUpload(e) {
+//   const file = e.target.files[0];
+//   if (!file || !activeTopicId) return;
+
+//   if (useFirebase) {
+//     try {
+//       showToast('⏳ Uploading script to Appwrite...');
+//       const { bucketId, dbId, colId } = window._env;
+
+//       // 1. Upload the file to Appwrite Storage
+//       const uploadedFile = await window._awStorage.createFile(
+//         bucketId,
+//         window._awID.unique(),
+//         file
+//       );
+
+//       // 2. Get the public download link
+//       const fileUrl = window._awStorage.getFileDownload(bucketId, uploadedFile.$id);
+
+//       // 3. Update the local UI state
+//       const t = topics.find(x => x.id === activeTopicId);
+//       if (t) {
+//         t.scripts = [...(t.scripts || []), { name: file.name, url: fileUrl }];
+        
+//         // 4. Save the array to your Appwrite Database as a string
+//         await window._awDb.updateDocument(
+//           dbId,
+//           colId,
+//           activeTopicId,
+//           { scripts: JSON.stringify(t.scripts) } 
+//         );
+
+//         save();
+//         renderDetailContent(t);
+//         showToast('📄 Script uploaded successfully!');
+//       }
+//     } catch (error) {
+//       console.error("Appwrite Upload Failed:", error);
+//       showToast('❌ Upload failed! Check console.');
+//     }
+//   } else {
+//     // Fallback if disconnected
+//     const t = topics.find(x => x.id === activeTopicId);
+//     if (t) {
+//       t.scripts = [...(t.scripts || []), { name: file.name, url: null }];
+//       save();
+//       render();
+//       renderDetailContent(t);
+//       showToast('📄 Script added locally!');
+//     }
+//   }
+//   e.target.value = ''; 
+// }
+
+
 async function handleScriptUpload(e) {
   const file = e.target.files[0];
   if (!file || !activeTopicId) return;
@@ -487,13 +542,19 @@ async function handleScriptUpload(e) {
       if (t) {
         t.scripts = [...(t.scripts || []), { name: file.name, url: fileUrl }];
         
-        // 4. Save the array to your Appwrite Database as a string
-        await window._awDb.updateDocument(
-          dbId,
-          colId,
-          activeTopicId,
-          { scripts: JSON.stringify(t.scripts) } 
-        );
+        // 4. Try to update the cloud document. If it doesn't exist, create it!
+        try {
+          await window._awDb.updateDocument(
+            dbId, colId, activeTopicId,
+            { scripts: JSON.stringify(t.scripts) } 
+          );
+        } catch (dbError) {
+          // Document missing in cloud? Create it fresh.
+          await window._awDb.createDocument(
+            dbId, colId, activeTopicId,
+            { scripts: JSON.stringify(t.scripts) } 
+          );
+        }
 
         save();
         renderDetailContent(t);
@@ -504,7 +565,7 @@ async function handleScriptUpload(e) {
       showToast('❌ Upload failed! Check console.');
     }
   } else {
-    // Fallback if disconnected
+    // Local fallback
     const t = topics.find(x => x.id === activeTopicId);
     if (t) {
       t.scripts = [...(t.scripts || []), { name: file.name, url: null }];
@@ -516,7 +577,6 @@ async function handleScriptUpload(e) {
   }
   e.target.value = ''; 
 }
-
 
 function toggleView() {
   listView = !listView;
