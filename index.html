@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>World Decoded — Content Ideas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     HEADER
+══════════════════════════════════ -->
+<header>
+  <div class="logo">
+    <span class="logo-mark">World Decoded</span>
+    <span class="logo-sub">Content Hub by DEEPAK PUROHIT</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost btn-sm" onclick="toggleView()">
+      <span id="view-icon">⊞</span> <span id="view-label">Grid</span>
+    </button>
+    <button class="btn btn-gold" onclick="openAddModal()">+ New Topic</button>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════
+     MAIN
+══════════════════════════════════ -->
+<main class="main">
+
+  <!-- Firebase config warning -->
+  <div id="config-banner" class="config-banner" style="display:none">
+    ⚠️ <span>Firebase not configured — data saved locally only.
+    <a href="https://firebase.google.com" target="_blank">Set up Firebase</a> for shared access.</span>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">
+      <span class="live-dot"></span>
+      <span class="eyebrow-text">Content Pipeline</span>
+    </div>
+    <h1>Your <em>ideas,</em><br>organised.</h1>
+    <p class="hero-desc">All your video topics, scripts, and creative notes — in one premium workspace. Share with your team and build in public.</p>
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-num" id="stat-total">0</div>
+        <div class="stat-label">Total Ideas</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-num" id="stat-long" style="color:var(--long)">0</div>
+        <div class="stat-label">Long Videos</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-num" id="stat-short" style="color:var(--short)">0</div>
+        <div class="stat-label">Shorts / Reels</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-num" id="stat-done" style="color:#4caf7d">0</div>
+        <div class="stat-label">Completed</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" id="tab-all"   onclick="setTab('all')">All Topics   <span class="tab-badge long"  id="badge-all">0</span></button>
+    <button class="tab"        id="tab-long"  onclick="setTab('long')">🎬 Long Videos <span class="tab-badge long"  id="badge-long">0</span></button>
+    <button class="tab"        id="tab-short" onclick="setTab('short')">⚡ Shorts     <span class="tab-badge short" id="badge-short">0</span></button>
+    <button class="tab"        id="tab-done"  onclick="setTab('done')">✅ Done       <span class="tab-badge done"  id="badge-done">0</span></button>
+  </div>
+
+  <!-- SECTION: ALL -->
+  <div id="section-all">
+    <div class="section-header">
+      <div class="section-title">All <span class="accent-long">Topics</span></div>
+      <div class="section-meta" id="meta-all">0 ideas</div>
+    </div>
+    <div class="topics-grid" id="grid-all"></div>
+  </div>
+
+  <!-- SECTION: LONG -->
+  <div id="section-long" style="display:none">
+    <div class="section-header">
+      <div class="section-title"><span class="accent-long">Long</span> Videos</div>
+      <div class="section-meta" id="meta-long">0 ideas</div>
+    </div>
+    <div class="topics-grid" id="grid-long"></div>
+  </div>
+
+  <!-- SECTION: SHORT -->
+  <div id="section-short" style="display:none">
+    <div class="section-header">
+      <div class="section-title"><span class="accent-short">Short</span> Videos</div>
+      <div class="section-meta" id="meta-short">0 ideas</div>
+    </div>
+    <div class="topics-grid" id="grid-short"></div>
+  </div>
+
+  <!-- SECTION: DONE -->
+  <div id="section-done" style="display:none">
+    <div class="section-header">
+      <div class="section-title">✅ <span style="color:#4caf7d">Completed</span></div>
+      <div class="section-meta" id="meta-done">0 ideas</div>
+    </div>
+    <div class="topics-grid" id="grid-done"></div>
+  </div>
+
+</main>
+
+<!-- ══════════════════════════════════
+     DETAIL MODAL
+══════════════════════════════════ -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal" id="modal-content">
+
+    <div class="modal-top">
+      <div class="modal-type-row">
+        <span class="card-type-badge" id="modal-badge"></span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <!-- Action buttons in modal header -->
+          <button class="icon-btn" id="modal-done-btn" title="Mark as Done" onclick="toggleDoneFromModal()">✅</button>
+          <button class="icon-btn" id="modal-edit-btn" title="Edit Topic"   onclick="openEditFromModal()">✏️</button>
+          <button class="icon-btn danger" id="modal-del-btn" title="Delete Topic" onclick="deleteFromModal()">🗑</button>
+          <button class="modal-close" onclick="closeDetailModal()">✕</button>
+        </div>
+      </div>
+      <div class="modal-done-banner" id="modal-done-banner" style="display:none">
+        <span>✅ This topic has been completed!</span>
+      </div>
+      <div class="modal-title" id="modal-title"></div>
+      <div class="modal-desc"  id="modal-desc"></div>
+      <div class="card-tags"   id="modal-tags" style="padding:0 0 24px"></div>
+    </div>
+
+    <div class="modal-divider"></div>
+
+    <!-- SCRIPT UPLOAD -->
+    <div class="script-section">
+      <div class="script-title">📄 Scripts</div>
+      <div id="scripts-list" class="uploaded-scripts"></div>
+      <div class="upload-zone" onclick="document.getElementById('script-file-input').click()">
+        <div class="upload-icon">☁</div>
+        <div class="upload-text">Upload a script</div>
+        <div class="upload-sub">PDF or TXT files accepted</div>
+      </div>
+      <input type="file" id="script-file-input" class="script-file-input" accept=".pdf,.txt" onchange="handleScriptUpload(event)"/>
+    </div>
+
+    <div class="modal-divider"></div>
+
+    <!-- COMMENTS -->
+    <div class="comments-section">
+      <div class="comments-title">💬 Team Comments</div>
+      <div class="comment-list" id="comment-list"></div>
+      <div class="comment-form">
+        <div class="input-row">
+          <input class="form-input" id="comment-author" placeholder="Your name (e.g. Script Writer)" style="max-width:200px"/>
+          <input class="form-input" id="comment-text" placeholder="Add a note or idea…" onkeydown="if(event.key==='Enter')postComment()"/>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="postComment()">Post Comment</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     ADD TOPIC MODAL
+══════════════════════════════════ -->
+<div class="modal-overlay" id="add-modal">
+  <div class="add-modal">
+    <div class="add-modal-header">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h2>New Topic</h2>
+        <button class="modal-close" onclick="closeAddModal()">✕</button>
+      </div>
+    </div>
+    <div class="add-modal-body">
+      <div>
+        <label class="form-label">Video Type</label>
+        <div class="type-toggle">
+          <button class="type-btn active-long" id="type-long"  onclick="selectType('long')">🎬 Long Video</button>
+          <button class="type-btn"             id="type-short" onclick="selectType('short')">⚡ Short / Reel</button>
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Topic Title *</label>
+        <input class="form-input" id="new-title" placeholder="e.g. How to Build Wealth in Your 20s" onkeydown="if(event.key==='Enter')addTopic()"/>
+      </div>
+      <div>
+        <label class="form-label">Description / Notes</label>
+        <textarea class="form-textarea" id="new-desc" rows="4" placeholder="Key points, angle, hook idea, references..."></textarea>
+      </div>
+      <div>
+        <label class="form-label">Tags (comma separated)</label>
+        <input class="form-input" id="new-tags" placeholder="e.g. finance, investing, beginner"/>
+      </div>
+    </div>
+    <div class="add-modal-footer">
+      <button class="btn btn-ghost" onclick="closeAddModal()">Cancel</button>
+      <button class="btn btn-gold"  onclick="addTopic()">Save Topic →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     EDIT TOPIC MODAL
+══════════════════════════════════ -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="add-modal">
+    <div class="add-modal-header">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <h2>Edit Topic</h2>
+        <button class="modal-close" onclick="closeEditModal()">✕</button>
+      </div>
+    </div>
+    <div class="add-modal-body">
+      <div>
+        <label class="form-label">Video Type</label>
+        <div class="type-toggle">
+          <button class="type-btn active-long" id="edit-type-long"  onclick="selectEditType('long')">🎬 Long Video</button>
+          <button class="type-btn"             id="edit-type-short" onclick="selectEditType('short')">⚡ Short / Reel</button>
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Topic Title *</label>
+        <input class="form-input" id="edit-title" placeholder="Topic title"/>
+      </div>
+      <div>
+        <label class="form-label">Description / Notes</label>
+        <textarea class="form-textarea" id="edit-desc" rows="4" placeholder="Description..."></textarea>
+      </div>
+      <div>
+        <label class="form-label">Tags (comma separated)</label>
+        <input class="form-input" id="edit-tags" placeholder="tag1, tag2"/>
+      </div>
+    </div>
+    <div class="add-modal-footer">
+      <button class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-gold"  onclick="saveEdit()">Save Changes →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     CONFIRM DELETE MODAL
+══════════════════════════════════ -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="confirm-modal">
+    <div class="confirm-icon">🗑</div>
+    <div class="confirm-title">Delete Topic?</div>
+    <div class="confirm-msg">This cannot be undone. The topic, its comments and scripts will be permanently removed.</div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirmModal()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-delete-btn" onclick="confirmDelete()">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     SUCCESS POPUP (save confirmation)
+══════════════════════════════════ -->
+<div class="success-popup" id="success-popup">
+  <div class="success-icon">✅</div>
+  <div class="success-text" id="success-text">Topic saved!</div>
+</div>
+
+<!-- TOAST (bottom right) -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════
+     FIREBASE (module, non-blocking)
+══════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/appwrite@14.0.0"></script>
+<script>
+  const { Client, Databases, Storage, ID } = Appwrite;
+
+  const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('6a2fd89a000ee4c8c309'); // 1. Paste Project ID here
+
+  window._awDb = new Databases(client);
+  window._awStorage = new Storage(client);
+  window._awID = ID;
+  
+  // Environment variables for app.js
+  window._env = {
+    dbId: '6a2fd97f00216d72f7f5',      // 2. Paste Database ID here
+    colId: 'topics',   // 3. Paste Collection ID here
+    bucketId: '6a2fdc3100211cc69368'     // 4. Paste Bucket ID here
+  };
+
+  // Signal to app.js that Appwrite is connected
+  window.dispatchEvent(new Event("backend-ready"));
+</script>
+<script src="app.js"></script>
+</body>
+</html>
+
+<script src="app.js"></script>
+</body>
+</html>
