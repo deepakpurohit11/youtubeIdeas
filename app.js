@@ -37,6 +37,7 @@ window.addEventListener('backend-ready', async () => {
       type: doc.type,
       tags: doc.tags,
       status: doc.status,
+      done: doc.status === 'done', // <-- ADD THIS LINE!
       scripts: doc.scripts ? JSON.parse(doc.scripts) : []
     }));
 
@@ -329,45 +330,96 @@ function selectEditType(type) {
   document.getElementById('edit-type-short').className = `type-btn${type === 'short' ? ' active-short' : ''}`;
 }
 
+// async function saveEdit() {
+//   const id    = editingTopicId;
+//   const title = document.getElementById('edit-title').value.trim();
+//   if (!title) { showToast('⚠️ Title cannot be empty'); return; }
+
+//   closeEditModal(); // Close first
+
+//   const desc    = document.getElementById('edit-desc').value.trim();
+//   const tagsRaw = document.getElementById('edit-tags').value;
+//   const tags    = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
+
+//   const updates = { type: selectedEditType, title, desc, tags };
+
+//   if (useFirebase) {
+//     const { doc, updateDoc } = window._fbFns;
+//     await updateDoc(doc(window._db, 'topics', id), updates);
+//   } else {
+//     const idx = topics.findIndex(t => t.id === id);
+//     if (idx !== -1) Object.assign(topics[idx], updates);
+//     save();
+//     render();
+//   }
+
+//   setTimeout(() => showSuccessPopup('Topic updated!'), 50);
+// }
+
+
 async function saveEdit() {
-  const id    = editingTopicId;
+  const id = editingTopicId;
   const title = document.getElementById('edit-title').value.trim();
   if (!title) { showToast('⚠️ Title cannot be empty'); return; }
 
-  closeEditModal(); // Close first
+  closeEditModal(); 
 
-  const desc    = document.getElementById('edit-desc').value.trim();
+  const desc = document.getElementById('edit-desc').value.trim();
   const tagsRaw = document.getElementById('edit-tags').value;
-  const tags    = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
 
-  const updates = { type: selectedEditType, title, desc, tags };
-
-  if (useFirebase) {
-    const { doc, updateDoc } = window._fbFns;
-    await updateDoc(doc(window._db, 'topics', id), updates);
-  } else {
-    const idx = topics.findIndex(t => t.id === id);
-    if (idx !== -1) Object.assign(topics[idx], updates);
-    save();
+  // 1. Update your screen instantly
+  const t = topics.find(t => t.id === id);
+  if (t) {
+    t.title = title;
+    t.desc = desc;
+    t.tags = tagsRaw;
+    t.type = selectedEditType;
     render();
   }
 
-  setTimeout(() => showSuccessPopup('Topic updated!'), 50);
+  // 2. Update the cloud
+  if (useFirebase) {
+    try {
+      const { dbId, colId } = window._env;
+      await window._awDb.updateDocument(dbId, colId, id, {
+        title: title,
+        desc: desc,
+        tags: tagsRaw,
+        type: selectedEditType
+      });
+      showToast('✅ Topic updated!');
+    } catch (error) {
+      console.error("Edit failed:", error);
+      showToast('❌ Update failed');
+    }
+  }
 }
 
 async function toggleDone(id) {
   const t = topics.find(t => t.id === id);
   if (!t) return;
+  
   const newDone = !t.done;
+  const newStatus = newDone ? 'done' : 'idea';
+  
+  // 1. Update screen instantly
+  t.done = newDone;
+  t.status = newStatus;
+  render();
+
+  // 2. Update cloud
   if (useFirebase) {
-    const { doc, updateDoc } = window._fbFns;
-    await updateDoc(doc(window._db, 'topics', id), { done: newDone });
-  } else {
-    t.done = newDone;
-    save();
-    render();
+    try {
+      const { dbId, colId } = window._env;
+      await window._awDb.updateDocument(dbId, colId, id, {
+        status: newStatus
+      });
+      showToast(newDone ? '✅ Marked as Done!' : '↩ Reopened topic');
+    } catch (error) {
+      console.error("Done failed:", error);
+      showToast('❌ Failed to update status');
+    }
   }
-  showToast(newDone ? '✅ Marked as Done!' : '↩ Reopened topic');
 }
 
 function toggleDoneFromModal() {
@@ -392,16 +444,21 @@ async function confirmDelete() {
   closeConfirmModal();
   closeDetailModal();
 
-  if (useFirebase) {
-    const { doc, deleteDoc } = window._fbFns;
-    await deleteDoc(doc(window._db, 'topics', id));
-  } else {
-    topics = topics.filter(t => t.id !== id);
-    save();
-    render();
-  }
+  // 1. Remove from screen instantly
+  topics = topics.filter(t => t.id !== id);
+  render();
 
-  setTimeout(() => showToast('🗑 Topic deleted'), 50);
+  // 2. Remove from cloud
+  if (useFirebase) {
+    try {
+      const { dbId, colId } = window._env;
+      await window._awDb.deleteDocument(dbId, colId, id);
+      showToast('🗑 Topic deleted');
+    } catch (error) {
+      console.error("Delete failed:", error);
+      showToast('❌ Failed to delete');
+    }
+  }
 }
 
 function deleteFromModal() {
