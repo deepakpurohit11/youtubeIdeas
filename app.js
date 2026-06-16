@@ -438,11 +438,20 @@ function renderDetailContent(t) {
   document.getElementById('modal-desc').textContent  = t.desc || 'No description added.';
   const tagsEl = document.getElementById('modal-tags');
   tagsEl.innerHTML = (t.tags || []).map(tag => `<span class="tag">#${tag}</span>`).join('');
+  // const sl = document.getElementById('scripts-list');
+  // sl.innerHTML = (t.scripts || []).map(s => `
+  //   <div class="script-file-item">
+  //     <span class="script-file-name">📄 ${escHtml(s.name)}</span>
+  //     ${s.url ? `<a class="script-file-link" href="${s.url}" target="_blank">Download ↗</a>` : '<span style="font-size:11px;color:var(--text-dim)">Local only</span>'}
+  //   </div>`).join('');
   const sl = document.getElementById('scripts-list');
-  sl.innerHTML = (t.scripts || []).map(s => `
+  sl.innerHTML = (t.scripts || []).map((s, index) => `
     <div class="script-file-item">
       <span class="script-file-name">📄 ${escHtml(s.name)}</span>
-      ${s.url ? `<a class="script-file-link" href="${s.url}" target="_blank">Download ↗</a>` : '<span style="font-size:11px;color:var(--text-dim)">Local only</span>'}
+      <div style="display: flex; gap: 15px; align-items: center;">
+        ${s.url ? `<a class="script-file-link" href="${s.url}" target="_blank">Download ↗</a>` : '<span style="font-size:11px;color:var(--text-dim)">Local only</span>'}
+        <button onclick="deleteScript('${t.id}', ${index})" style="color: #ff4444; background: none; border: none; cursor: pointer; font-size: 14px;" title="Delete Script">🗑️</button>
+      </div>
     </div>`).join('');
   const cl       = document.getElementById('comment-list');
   const comments = t.comments || [];
@@ -708,3 +717,39 @@ document.addEventListener('keydown', e => {
 });
 
 render();
+
+
+
+async function deleteScript(topicId, scriptIndex) {
+  // 1. Ask for confirmation so you don't delete by accident
+  if (!confirm("Are you sure you want to remove this script?")) return;
+
+  // 2. Find the topic
+  const t = topics.find(x => x.id === topicId);
+  if (!t) return;
+
+  // 3. Remove the script from the local list
+  t.scripts.splice(scriptIndex, 1);
+
+  if (useFirebase) {
+    try {
+      showToast('⏳ Removing script from cloud...');
+      const { dbId, colId } = window._env;
+
+      // 4. Update the Appwrite database to reflect the empty/shorter list
+      await window._awDb.updateDocument(
+        dbId, colId, topicId,
+        { scripts: JSON.stringify(t.scripts) } 
+      );
+
+      // 5. Update the screen
+      save(); // Save local state
+      renderDetailContent(t); // Refresh the detail panel
+      showToast('🗑️ Script removed successfully!');
+
+    } catch (error) {
+      console.error("Delete failed:", error);
+      showToast('❌ Failed to remove script.');
+    }
+  }
+}
