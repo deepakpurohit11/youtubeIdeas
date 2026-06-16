@@ -16,10 +16,37 @@ let pendingDeleteId = null;
 /* ════════════════════════════════════════
    FIREBASE INIT
    ════════════════════════════════════════ */
-window.addEventListener('backend-ready', () => {
-  useFirebase = true; // Kept true so your existing UI buttons/flows unlock
-  // Do NOT call listenTopics() here anymore
+// window.addEventListener('backend-ready', () => {
+//   useFirebase = true; // Kept true so your existing UI buttons/flows unlock
+//   // Do NOT call listenTopics() here anymore
+// });
+
+window.addEventListener('backend-ready', async () => {
+  useFirebase = true; // Keeps your UI unlocked
+  
+  try {
+    const { dbId, colId } = window._env;
+    // Fetch all topics from your Appwrite database
+    const response = await window._awDb.listDocuments(dbId, colId);
+
+    // Convert the cloud data into your website's format
+    topics = response.documents.map(doc => ({
+      id: doc.$id,
+      title: doc.title,
+      desc: doc.desc,
+      type: doc.type,
+      tags: doc.tags,
+      status: doc.status,
+      scripts: doc.scripts ? JSON.parse(doc.scripts) : []
+    }));
+
+    render(); // Update the grid with the cloud data!
+  } catch (error) {
+    console.error("Failed to load from cloud:", error);
+    showToast('❌ Failed to load cloud data.');
+  }
 });
+
 
 window.addEventListener('firebase-failed', () => {
   showConfigBanner();
@@ -183,35 +210,94 @@ function selectType(type) {
   document.getElementById('type-short').className = `type-btn${type === 'short' ? ' active-short' : ''}`;
 }
 
+// async function addTopic() {
+//   const title = document.getElementById('new-title').value.trim();
+//   if (!title) { showToast('⚠️ Please enter a topic title'); return; }
+  
+//   closeAddModal(); // Close first
+
+//   const desc    = document.getElementById('new-desc').value.trim();
+//   const tagsRaw = document.getElementById('new-tags').value;
+//   const tags    = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
+
+//   const topic = {
+//     type: selectedType, title, desc, tags,
+//     comments: [], scripts: [], done: false,
+//     createdAt: new Date().toISOString()
+//   };
+
+//   if (useFirebase) {
+//     const { collection, addDoc, serverTimestamp } = window._fbFns;
+//     topic.createdAt = serverTimestamp();
+//     await addDoc(collection(window._db, 'topics'), topic);
+//   } else {
+//     topic.id = Date.now().toString();
+//     topics.unshift(topic);
+//     save();
+//     render();
+//   }
+
+//   setTimeout(() => showSuccessPopup('Topic saved successfully!'), 50);
+// }
+
+
+
 async function addTopic() {
   const title = document.getElementById('new-title').value.trim();
-  if (!title) { showToast('⚠️ Please enter a topic title'); return; }
-  
-  closeAddModal(); // Close first
-
-  const desc    = document.getElementById('new-desc').value.trim();
+  const desc = document.getElementById('new-desc').value.trim();
   const tagsRaw = document.getElementById('new-tags').value;
-  const tags    = tagsRaw.split(',').map(t => t.trim()).filter(Boolean);
+  if (!title) return;
 
-  const topic = {
-    type: selectedType, title, desc, tags,
-    comments: [], scripts: [], done: false,
-    createdAt: new Date().toISOString()
+  const newTopicData = {
+    title: title,
+    desc: desc,
+    type: newTopicType,
+    tags: tagsRaw,
+    status: 'idea',
+    scripts: JSON.stringify([]) // Start with an empty script array
   };
 
   if (useFirebase) {
-    const { collection, addDoc, serverTimestamp } = window._fbFns;
-    topic.createdAt = serverTimestamp();
-    await addDoc(collection(window._db, 'topics'), topic);
-  } else {
-    topic.id = Date.now().toString();
-    topics.unshift(topic);
-    save();
-    render();
-  }
+    try {
+      showToast('⏳ Saving to cloud...');
+      const { dbId, colId } = window._env;
 
-  setTimeout(() => showSuccessPopup('Topic saved successfully!'), 50);
+      // 1. Save to Appwrite
+      const response = await window._awDb.createDocument(
+        dbId,
+        colId,
+        window._awID.unique(),
+        newTopicData
+      );
+
+      // 2. Add to your local screen
+      topics.push({
+        id: response.$id,
+        title: response.title,
+        desc: response.desc,
+        type: response.type,
+        tags: response.tags,
+        status: response.status,
+        scripts: []
+      });
+
+      render();
+      closeAddModal();
+      
+      // Clear the form
+      document.getElementById('new-title').value = '';
+      document.getElementById('new-desc').value = '';
+      document.getElementById('new-tags').value = '';
+      
+      showToast('✅ Topic saved to cloud!');
+    } catch (error) {
+      console.error(error);
+      showToast('❌ Error saving to cloud');
+    }
+  }
 }
+
+
 
 function openEditModal(id) {
   const t = topics.find(t => t.id === id);
