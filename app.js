@@ -29,17 +29,31 @@ window.addEventListener('backend-ready', async () => {
     // Fetch all topics from your Appwrite database
     const response = await window._awDb.listDocuments(dbId, colId);
 
-    // Convert the cloud data into your website's format
-    topics = response.documents.map(doc => ({
-      id: doc.$id,
-      title: doc.title,
-      desc: doc.desc,
-      type: doc.type,
-      tags: doc.tags,
-      status: doc.status,
-      done: doc.status === 'done', // <-- ADD THIS LINE!
-      scripts: doc.scripts ? JSON.parse(doc.scripts) : []
-    }));
+// Convert the cloud data into your website's format
+    topics = response.documents.map(doc => {
+      // Safely parse scripts in case of bad data
+      let safeScripts = [];
+      try { safeScripts = doc.scripts ? JSON.parse(doc.scripts) : []; } catch(e) {}
+
+      // Convert tag string (e.g., "finance, investing") back into a proper array
+      let safeTags = [];
+      if (typeof doc.tags === 'string') {
+        safeTags = doc.tags.split(',').map(t => t.trim()).filter(Boolean);
+      } else if (Array.isArray(doc.tags)) {
+        safeTags = doc.tags;
+      }
+
+      return {
+        id: doc.$id,
+        title: doc.title || 'Untitled',
+        desc: doc.desc || '',
+        type: doc.type || 'long',
+        tags: safeTags,
+        status: doc.status || 'idea',
+        done: doc.status === 'done',
+        scripts: safeScripts
+      };
+    });
 
     render(); // Update the grid with the cloud data!
   } catch (error) {
