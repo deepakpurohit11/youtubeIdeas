@@ -248,13 +248,15 @@ async function addTopic() {
   const tagsRaw = document.getElementById('new-tags').value;
   if (!title) return;
 
+const isLong = document.getElementById('type-long').classList.contains('active-long');
+
   const newTopicData = {
     title: title,
     desc: desc,
-    type: newTopicType,
+    type: isLong ? 'long' : 'short',
     tags: tagsRaw,
     status: 'idea',
-    scripts: JSON.stringify([]) // Start with an empty script array
+    scripts: JSON.stringify([]) 
   };
 
   if (useFirebase) {
